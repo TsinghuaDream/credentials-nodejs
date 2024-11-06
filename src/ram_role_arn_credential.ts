@@ -9,6 +9,11 @@ export default class RamRoleArnCredential extends SessionCredential {
   roleSessionName: string;
   runtime: {[key: string]: any};
   host: string;
+  externalId: string;
+  stsRegionId: string;
+  enableVpc: boolean;
+  readTimeout?: number;
+  connectTimeout?: number;
 
   constructor(config: Config, runtime: {[key: string]: any} = {}) {
     if (!config.accessKeyId) {
@@ -35,7 +40,12 @@ export default class RamRoleArnCredential extends SessionCredential {
     this.durationSeconds = config.roleSessionExpiration || 3600;
     this.roleSessionName = config.roleSessionName || 'role_session_name';
     this.runtime = runtime;
-    this.host = 'https://sts.aliyuncs.com';
+    this.host = config.stsEndpoint || 'https://sts.aliyuncs.com';
+    this.externalId = config.externalId;
+    this.stsRegionId = config.stsRegionId;
+    this.readTimeout = config.readTimeout;
+    this.connectTimeout = config.connectTimeout;
+    this.enableVpc = config.enableVpc;
   }
 
   async updateCredential() {
@@ -45,10 +55,19 @@ export default class RamRoleArnCredential extends SessionCredential {
       roleArn: this.roleArn,
       action: 'AssumeRole',
       durationSeconds: this.durationSeconds,
-      roleSessionName: this.roleSessionName
+      roleSessionName: this.roleSessionName,
+      externalId: this.externalId,
+      stsRegionId: this.stsRegionId,
+      enableVpc: this.enableVpc
     };
     if (this.policy) {
       params.policy = this.policy;
+    }
+    if (this.readTimeout) {
+      this.runtime.readTimeOut = this.readTimeout;
+    }
+    if (this.connectTimeout) {
+      this.runtime.connectTimeout = this.connectTimeout;
     }
     const json = await request(this.host, params, this.runtime, this.accessKeySecret);
     this.sessionCredential = json.Credentials;
